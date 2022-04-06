@@ -11,15 +11,16 @@ class MyCLI < Thor
   class_option :region, :default => 'us-east-1', :aliases => ['-r']
   class_option :tags, :type => :boolean, :aliases => ['-t']
 
-  desc "target_groups_by_instance id", "Retrieve target groups by instance id"
+  desc "target_groups id", "Retrieve target groups by instance id"
   option :type, :default => 'ip', desc: 'The type to filter. Values: ip, instance, lambda.'
   def target_groups(id)
-    p options if options[:verbose]
-    get_target_groups(id: id, target_type: 'instance', profile: options[:profile], region: options[:region])
+    verbose = options[:verbose]
+    p options if verbose
+    get_target_groups(id: id, target_type: options[:type], profile: options[:profile], region: options[:region], verbose: verbose)
   end
 
-  desc "network_interfaces_by_private_ip ip profile", "the load balancer arn to filter"
-  def network_interfaces_by_ip(ip, profile="default")
+  desc "network_interfaces ip profile", "the load balancer arn to filter"
+  def network_interfaces(ip, profile="default")
     p options if options[:verbose]
     get_network_interfaces_by_private_ip(ip, profile)
   end

@@ -1,4 +1,4 @@
-def get_target_groups(id:, target_type:, lb_arn:nil, region: 'us-east-1',  profile:'default')
+def get_target_groups(id:, target_type:, lb_arn:nil, region: 'us-east-1',  profile:'default', verbose:false)
   client = Aws::ElasticLoadBalancingV2::Client.new(
     profile: profile,
     region: "us-east-1"
@@ -9,6 +9,7 @@ def get_target_groups(id:, target_type:, lb_arn:nil, region: 'us-east-1',  profi
 
   resp[:target_groups].each do |tg|
     if tg[:target_type] == target_type
+      puts "Getting targets of type `#{target_type}` with id: `#{id}` for target group: `#{tg[:target_group_arn]}`" if verbose
       get_target(tg[:target_group_arn], id, client)
     end
   end
