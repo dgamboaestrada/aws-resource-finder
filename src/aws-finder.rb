@@ -4,6 +4,7 @@ require 'optparse'
 require 'thor'
 require './network_interfaces'
 require './target_groups'
+require './route53'
 
 class MyCLI < Thor
   class_option :verbose, :type => :boolean, :aliases => ['-v']
@@ -16,7 +17,14 @@ class MyCLI < Thor
   def target_groups(id)
     verbose = options[:verbose]
     p options if verbose
-    get_target_groups(id: id, target_type: options[:type], profile: options[:profile], region: options[:region], verbose: verbose)
+    get_target_groups(profile: options[:profile], region: options[:region], verbose: verbose, id: id, target_type: options[:type])
+  end
+
+  desc "route53_records id", "Retrieve records by value"
+  def route53_records(value)
+    verbose = options[:verbose]
+    p options if verbose
+    get_route53_records(profile: options[:profile], region: options[:region], verbose: verbose, value: value)
   end
 
   desc "network_interfaces ip profile", "the load balancer arn to filter"
