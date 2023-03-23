@@ -1,38 +1,32 @@
-def get_route53_records(region: 'us-east-1',  profile:'default', verbose:false, value:)
-  client = Aws::Route53::Client.new(
-    profile: profile,
-    region: "us-east-1"
-  )
-  resp = client.list_resource_record_sets({
-    hosted_zone_id: "Z2BRA2O9DHLC5", # required
-    start_record_name: "om",
-    start_record_type: "TXT", # accepts SOA, A, TXT, NS, CNAME, MX, NAPTR, PTR, SRV, SPF, AAAA, CAA, DS
-#     start_record_identifier: "ResourceRecordSetIdentifier",
-    max_items: 1,
-  })
-
-  resp.resource_record_sets.each do |record|
-    p record
-#     if tg[:target_type] == target_type
-#       puts "Getting targets of type `#{target_type}` with id: `#{id}` for target group: `#{tg[:target_group_arn]}`" if verbose
-#       get_target(tg[:target_group_arn], id, client)
-#     end
-  end
+def get_route53_records(region: 'us-east-1',  profile:'default', verbose:false, zone_name:, value:)
+  search_records_in_zone_by_name(verbose, profile, region, "#{zone_name}.", "#{value}.")
 end
 
-def get_target(target_group_arn, id, client)
-  resp = client.describe_target_health({
-    target_group_arn: target_group_arn,
-  })
-  resp[:target_health_descriptions].each do |th|
-    if th[:target][:id] == id
-      puts "---TG"
-      puts target_group_arn
-      tags = client.describe_tags({
-        resource_arns: [target_group_arn]
-      })
-      puts tags.to_json
-      puts th.to_json
-    end
+def search_records_in_zone_by_name(verbose, profile, region, zone_name, record_name)
+  client = Aws::Route53::Client.new(profile: profile, region: region)
+
+  zone = client.list_hosted_zones_by_name(dns_name: zone_name).hosted_zones.first
+  pp zone if verbose
+
+  if zone.empty? || zone.name != zone_name
+    puts "No zone was found with the name #{zone_name} in Route53"
+    return
+  end
+  puts "Zone found: #{zone.id}, #{zone.name}"
+
+  resp = client.list_resource_record_sets(hosted_zone_id: zone.id)
+  puts "Recors for #{zone}" if verbose
+  pp resp if verbose
+
+  found_records = resp.resource_record_sets.select { |record| record.name == record_name }
+  pp found_records if verbose
+
+  if found_records.empty?
+    puts "No records were found with the name #{record_name} in zona #{zone_name}"
+    return
+  end
+
+  found_records.each do |record|
+    puts "Record found: #{record.name} #{record.type} #{record.ttl} #{record.resource_records.map(&:value)} #{record.alias_target.dns_name if record.alias_target != nil}"
   end
 end

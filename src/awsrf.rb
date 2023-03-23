@@ -21,10 +21,11 @@ class MyCLI < Thor
   end
 
   desc "route53_records id", "Retrieve records by value"
+  option :zone_name,  desc: 'The zone name in witch to search. If a zone name is no specified. if the zone is not specified, the record will be searched in all zones.'
   def route53_records(value)
     verbose = options[:verbose]
     p options if verbose
-    get_route53_records(profile: options[:profile], region: options[:region], verbose: verbose, value: value)
+    get_route53_records(profile: options[:profile], region: options[:region], verbose: verbose, zone_name: options[:zone_name], value: value)
   end
 
   desc "network_interfaces ip profile", "the load balancer arn to filter"
