@@ -8,7 +8,7 @@ require './route53'
 
 class MyCLI < Thor
   class_option :verbose, :type => :boolean, :aliases => ['-v']
-  class_option :profile, :default => 'default', :aliases => ['-p']
+  class_option :profile, :default => 'default', :aliases => ['-p'], desc:'The AWS profile to use. This accepts one (-p prod) or more separated by commas (-p prod,qa)'
   class_option :region, :default => 'us-east-1', :aliases => ['-r']
   class_option :tags, :type => :boolean, :aliases => ['-t']
 
@@ -17,7 +17,9 @@ class MyCLI < Thor
   def target_groups(id)
     verbose = options[:verbose]
     p options if verbose
-    get_target_groups(profile: options[:profile], region: options[:region], verbose: verbose, id: id, target_type: options[:type])
+    options[:profile].split(',').each do |profile|
+      get_target_groups(profile: profile, region: options[:region], verbose: verbose, id: id, target_type: options[:type])
+    end
   end
 
   desc "route53_records id", "Retrieve records by value"
@@ -25,15 +27,20 @@ class MyCLI < Thor
   def route53_records(value)
     verbose = options[:verbose]
     p options if verbose
-    get_route53_records(profile: options[:profile], region: options[:region], verbose: verbose, zone_name: options[:zone_name], value: value)
+    options[:profile].split(',').each do |profile|
+      puts ">>>>> Profile: #{profile}"
+      get_route53_records(profile: profile, region: options[:region], verbose: verbose, zone_name: options[:zone_name], value: value)
+    end
   end
 
   desc "network_interfaces ip profile", "the load balancer arn to filter"
   def network_interfaces(ip)
     verbose = options[:verbose]
     p options if verbose
-    get_network_interfaces_by_private_ip(profile: options[:profile], region: options[:region], verbose: verbose, ip: ip)
-    get_network_interfaces_by_public_ip(profile: options[:profile], region: options[:region], verbose: verbose, ip: ip)
+    options[:profile].split(',').each do |profile|
+      get_network_interfaces_by_private_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip)
+      get_network_interfaces_by_public_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip)
+    end
   end
 end
 
