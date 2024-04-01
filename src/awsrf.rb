@@ -5,6 +5,7 @@ require 'thor'
 require './network_interfaces'
 require './target_groups'
 require './route53'
+require './volumes'
 
 class MyCLI < Thor
   class_option :verbose, :type => :boolean, :aliases => ['-v']
@@ -22,7 +23,7 @@ class MyCLI < Thor
     end
   end
 
-  desc "route53_records id", "Retrieve records by value"
+  desc "route53_records value", "Retrieve records by value"
   option :zone_name,  desc: 'The zone name in witch to search. If a zone name is no specified. if the zone is not specified, the record will be searched in all zones.'
   def route53_records(value)
     verbose = options[:verbose]
@@ -38,8 +39,19 @@ class MyCLI < Thor
     verbose = options[:verbose]
     p options if verbose
     options[:profile].split(',').each do |profile|
+      puts ">>>>> Profile: #{profile}"
       get_network_interfaces_by_private_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip)
       get_network_interfaces_by_public_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip)
+    end
+  end
+
+  desc "volume id profile", "Retrieve volumes by id"
+  def volumes(id)
+    verbose = options[:verbose]
+    p options if verbose
+    options[:profile].split(',').each do |profile|
+      puts ">>>>> Profile: #{profile}"
+      get_volume_by_id(profile: profile, region: options[:region], verbose: verbose, id: id)
     end
   end
 end
