@@ -23,6 +23,16 @@ class MyCLI < Thor
     end
   end
 
+  desc "route53_zones value", "Retrieve zones by value"
+  def route53_zones(value)
+    verbose = options[:verbose]
+    p options if verbose
+    options[:profile].split(',').each do |profile|
+      puts ">>>>> Profile: #{profile}"
+      get_route53_zones(profile: profile, region: options[:region], verbose: verbose, value: value)
+    end
+  end
+
   desc "route53_records value", "Retrieve records by value"
   option :zone_name,  desc: 'The zone name in witch to search. If a zone name is no specified. if the zone is not specified, the record will be searched in all zones.'
   def route53_records(value)

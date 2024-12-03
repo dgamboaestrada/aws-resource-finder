@@ -2,6 +2,23 @@ def get_route53_records(region: 'us-east-1',  profile:'default', verbose:false, 
   search_records_in_zone_by_name(verbose, profile, region, "#{zone_name}.", "#{value}.")
 end
 
+def get_route53_zones(region: 'us-east-1',  profile:'default', verbose:false, value:)
+  search_zones_by_name(verbose, profile, region, "#{value}.")
+end
+
+def search_zones_by_name(verbose, profile, region, zone_name)
+  client = Aws::Route53::Client.new(profile: profile, region: region)
+
+  zone = client.list_hosted_zones_by_name(dns_name: zone_name).hosted_zones.first
+  pp zone if verbose
+
+  if zone.empty? || zone.name != zone_name
+    puts "No zone was found with the name #{zone_name} in Route53"
+    return
+  end
+  puts "Zone found: #{zone.id}, #{zone.name}"
+end
+
 def search_records_in_zone_by_name(verbose, profile, region, zone_name, record_name)
   client = Aws::Route53::Client.new(profile: profile, region: region)
 
