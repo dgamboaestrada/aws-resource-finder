@@ -39,3 +39,6 @@ This project used:
 - [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
 - Git tag conventions: `git tag v0.1.0 -m "Release version 0.1.0"`
+
+# References
+- [AWS SDK for Ruby V3](https://docs.aws.amazon.com/sdk-for-ruby/v3/api/)
