@@ -46,18 +46,29 @@ def search_acm(profile:, region:, domain: nil, san_contains: nil, serial: nil, v
       items: matches
     )
   else
+    text_lines = []
     if matches.empty?
-      puts "No certificates found."
+      text_lines << "No certificates found."
     else
       matches.each do |c|
-        puts "ACM #{c[:arn]} domain=#{c[:domain_name]} status=#{c[:status]} "\
-             "valid=#{c[:not_before]}..#{c[:not_after]} serial=#{c[:serial]}"
+        text_lines << "ACM #{c[:arn]} domain=#{c[:domain_name]} status=#{c[:status]} " \
+                       "valid=#{c[:not_before]}..#{c[:not_after]} serial=#{c[:serial]}"
         if verbose
-          puts "  SANs: #{Array(c[:san]).join(', ')}"
-          puts "  InUseBy: #{Array(c[:in_use_by]).join(', ')}"
+          text_lines << "  SANs: #{Array(c[:san]).join(', ')}"
+          text_lines << "  InUseBy: #{Array(c[:in_use_by]).join(', ')}"
         end
       end
     end
+    render_response(
+      output: output,
+      command: 'acm',
+      resource: 'acm:certificate',
+      profile: profile,
+      region: region,
+      filters: { domain: domain, san_contains: san_contains, serial: serial },
+      items: matches,
+      text_lines: text_lines
+    )
   end
 end
 

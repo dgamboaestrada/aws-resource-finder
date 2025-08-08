@@ -16,8 +16,10 @@ require 'yaml'
 #   "warnings": [ "..." ],
 #   "errors": [ "..." ]
 # }
-def render_response(output:, command:, profile:, region:, items:, verbose: false, meta: {}, warnings: [], errors: [], resource: nil, filters: {})
-  return unless %w[json yaml].include?(output)
+def render_response(output:, command:, profile:, region:, items:, verbose: false, meta: {}, warnings: [], errors: [], resource: nil, filters: {}, text_lines: nil)
+  unless %w[text json yaml].include?(output)
+    return
+  end
 
   payload = {
     schema_version: '1.0',
@@ -33,7 +35,25 @@ def render_response(output:, command:, profile:, region:, items:, verbose: false
     errors: errors
   }
 
-  if output == 'json'
+  if output == 'text'
+    header = [
+      "command=#{command}",
+      ("resource=#{resource}" unless resource.nil? || resource.to_s.empty?),
+      ("profile=#{profile}" unless profile.nil? || profile.to_s.empty?),
+      ("region=#{region}" unless region.nil? || region.to_s.empty?),
+      ("count=#{payload[:count]}"),
+      ("filters=#{filters.compact.to_h.to_json}" unless filters.nil? || filters.empty?)
+    ].compact.join(' ')
+    puts header
+    warnings.each { |w| puts "warning: #{w}" }
+    errors.each { |e| puts "error: #{e}" }
+    if text_lines && !text_lines.empty?
+      text_lines.each { |l| puts l }
+    else
+      # Fallback: dump items in a compact JSON per line
+      Array(items).each { |it| puts JSON.generate(it) }
+    end
+  elsif output == 'json'
     puts JSON.pretty_generate(payload)
   else
     puts YAML.dump(payload)

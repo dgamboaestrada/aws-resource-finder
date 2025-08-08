@@ -62,15 +62,26 @@ def get_route53_records(region: 'us-east-1', profile:'default', verbose:false, z
       items: results
     )
   else
+    text_lines = []
     if results.empty?
-      puts "No records found for '#{record_name}'"
+      text_lines << "No records found for '#{record_name}'"
     else
       results.each do |r|
-        puts "Record #{r[:name]} #{r[:type]} ttl=#{r[:ttl]} "\
-             "values=#{r[:values].join(',')} alias=#{r[:alias_target]} "\
-             "[zone=#{r[:zone_name]} (#{r[:zone_id]}) private=#{r[:private_zone]}]"
+        text_lines << "Record #{r[:name]} #{r[:type]} ttl=#{r[:ttl]} " \
+                       "values=#{r[:values].join(',')} alias=#{r[:alias_target]} " \
+                       "[zone=#{r[:zone_name]} (#{r[:zone_id]}) private=#{r[:private_zone]}]"
       end
     end
+    render_response(
+      output: output,
+      command: 'route53_records',
+      resource: 'route53:record',
+      profile: profile,
+      region: region,
+      filters: { zone_name: zone_name, value: value },
+      items: results,
+      text_lines: text_lines
+    )
   end
 end
 
@@ -97,8 +108,16 @@ def get_route53_zones(region: 'us-east-1', profile:'default', verbose:false, val
       items: items
     )
   else
-    zones.each do |z|
-      puts "Zone found: id=#{z.id}, name=#{z.name}, private_zone=#{z.config.private_zone}"
-    end
+    text_lines = zones.map { |z| "Zone found: id=#{z.id}, name=#{z.name}, private_zone=#{z.config.private_zone}" }
+    render_response(
+      output: output,
+      command: 'route53_zones',
+      resource: 'route53:hosted-zone',
+      profile: profile,
+      region: region,
+      filters: { value: value },
+      items: items,
+      text_lines: text_lines
+    )
   end
 end
