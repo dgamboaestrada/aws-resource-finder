@@ -1,5 +1,6 @@
 require 'aws-sdk-ec2'
 require 'json'
+require_relative 'renderer'
 
 def get_network_interfaces_by_private_ip(ip:, region:'us-east-1', profile:'default', verbose:false, output:'text')
   client = Aws::EC2::Client.new(profile: profile, region: region)
@@ -7,7 +8,7 @@ def get_network_interfaces_by_private_ip(ip:, region:'us-east-1', profile:'defau
   resp = client.describe_network_interfaces(filters: [{ name: "private-ip-address", values: [ip] }])
   pp resp if verbose
 
-  render_network_interfaces(resp.network_interfaces, output: output)
+  render_network_interfaces(resp.network_interfaces, profile: profile, region: region, output: output)
 end
 
 def get_network_interfaces_by_public_ip(ip:, region:'us-east-1', profile:'default', verbose:false, output:'text')
@@ -16,12 +17,12 @@ def get_network_interfaces_by_public_ip(ip:, region:'us-east-1', profile:'defaul
   resp = client.describe_network_interfaces(filters: [{ name: "association.public-ip", values: [ip] }])
   pp resp if verbose
 
-  render_network_interfaces(resp.network_interfaces, output: output)
+  render_network_interfaces(resp.network_interfaces, profile: profile, region: region, output: output)
 end
 
-def render_network_interfaces(enis, output: 'text')
+def render_network_interfaces(enis, profile:, region:, output: 'text')
   if output == 'json'
-    puts JSON.pretty_generate(enis.map { |ni|
+    items = enis.map { |ni|
       {
         id: ni.network_interface_id,
         status: ni.status,
@@ -34,7 +35,16 @@ def render_network_interfaces(enis, output: 'text')
         groups: ni.groups.map { |g| { id: g.group_id, name: g.group_name } },
         tags: (ni.tag_set || []).map { |t| { key: t.key, value: t.value } }
       }
-    })
+    }
+    render_response(
+      output: output,
+      command: 'network_interfaces',
+      resource: 'ec2:network-interface',
+      profile: profile,
+      region: region,
+      filters: { ip: items.map { |i| i[:private_ip] || i[:public_ip] }.compact.uniq },
+      items: items
+    )
   else
     if enis.empty?
       puts "No ENIs found."

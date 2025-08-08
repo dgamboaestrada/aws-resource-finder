@@ -1,6 +1,7 @@
 require 'aws-sdk-ec2'
 require 'json'
 require 'ostruct'
+require_relative 'renderer'
 
 def get_volume_by_id(id:, region:'us-east-1', profile:'default', verbose:false, output:'text')
   client = Aws::EC2::Client.new(profile: profile, region: region)
@@ -15,7 +16,7 @@ def get_volume_by_id(id:, region:'us-east-1', profile:'default', verbose:false, 
 
   vols = resp.volumes
   if output == 'json'
-    puts JSON.pretty_generate(vols.map { |v|
+    items = vols.map { |v|
       {
         id: v.volume_id,
         state: v.state,
@@ -29,7 +30,16 @@ def get_volume_by_id(id:, region:'us-east-1', profile:'default', verbose:false, 
         attachments: v.attachments.map { |a| { instance_id: a.instance_id, device: a.device, state: a.state } },
         tags: (v.tags || []).map { |t| { key: t.key, value: t.value } }
       }
-    })
+    }
+    render_response(
+      output: output,
+      command: 'volumes',
+      resource: 'ec2:volume',
+      profile: profile,
+      region: region,
+      filters: { volume_id: id },
+      items: items
+    )
   else
     if vols.empty?
       puts "Volume not found: #{id}"

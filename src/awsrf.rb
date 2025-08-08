@@ -9,6 +9,7 @@ require_relative 'target_groups'
 require_relative 'route53'
 require_relative 'volumes'
 require_relative 'acm'
+require_relative 'renderer'
 
 class MyCLI < Thor
   class_option :verbose, :type => :boolean, :aliases => ['-v']

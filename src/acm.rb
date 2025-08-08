@@ -1,5 +1,6 @@
 require 'aws-sdk-acm'
 require 'json'
+require_relative 'renderer'
 
 def search_acm(profile:, region:, domain: nil, san_contains: nil, serial: nil, verbose:false, output:'text')
   client = Aws::ACM::Client.new(profile: profile, region: region)
@@ -35,7 +36,15 @@ def search_acm(profile:, region:, domain: nil, san_contains: nil, serial: nil, v
   end
 
   if output == 'json'
-    puts JSON.pretty_generate(matches)
+    render_response(
+      output: output,
+      command: 'acm',
+      resource: 'acm:certificate',
+      profile: profile,
+      region: region,
+      filters: { domain: domain, san_contains: san_contains, serial: serial },
+      items: matches
+    )
   else
     if matches.empty?
       puts "No certificates found."

@@ -1,5 +1,6 @@
 require 'aws-sdk-elasticloadbalancingv2'
 require 'json'
+require_relative 'renderer'
 
 def get_target_groups(id:, target_type:, lb_arn:nil, region:'us-east-1', profile:'default', verbose:false, show_tags:false, output:'text')
   client = Aws::ElasticLoadBalancingV2::Client.new(profile: profile, region: region)
@@ -50,7 +51,15 @@ def get_target_groups(id:, target_type:, lb_arn:nil, region:'us-east-1', profile
   end
 
   if output == 'json'
-    puts JSON.pretty_generate(results)
+    render_response(
+      output: output,
+      command: 'target_groups',
+      resource: 'elbv2:target-group',
+      profile: profile,
+      region: region,
+      filters: { target_type: target_type, id: id, lb_arn: lb_arn },
+      items: results
+    )
   else
     if results.empty?
       puts "No matches found for id=#{id} in target groups (type=#{target_type})."

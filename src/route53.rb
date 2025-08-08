@@ -1,5 +1,6 @@
 require 'aws-sdk-route53'
 require 'json'
+require_relative 'renderer'
 
 def get_route53_records(region: 'us-east-1', profile:'default', verbose:false, zone_name: nil, value:, output:'text')
   client = Aws::Route53::Client.new(profile: profile, region: region)
@@ -51,7 +52,15 @@ def get_route53_records(region: 'us-east-1', profile:'default', verbose:false, z
   end
 
   if output == 'json'
-    puts JSON.pretty_generate(results)
+    render_response(
+      output: output,
+      command: 'route53_records',
+      resource: 'route53:record',
+      profile: profile,
+      region: region,
+      filters: { zone_name: zone_name, value: value },
+      items: results
+    )
   else
     if results.empty?
       puts "No records found for '#{record_name}'"
@@ -77,9 +86,16 @@ def get_route53_zones(region: 'us-east-1', profile:'default', verbose:false, val
   end
 
   if output == 'json'
-    puts JSON.pretty_generate(zones.map { |z|
-      { id: z.id, name: z.name, private_zone: z.config.private_zone }
-    })
+    items = zones.map { |z| { id: z.id, name: z.name, private_zone: z.config.private_zone } }
+    render_response(
+      output: output,
+      command: 'route53_zones',
+      resource: 'route53:hosted-zone',
+      profile: profile,
+      region: region,
+      filters: { value: value },
+      items: items
+    )
   else
     zones.each do |z|
       puts "Zone found: id=#{z.id}, name=#{z.name}, private_zone=#{z.config.private_zone}"
