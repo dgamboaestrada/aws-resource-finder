@@ -16,7 +16,7 @@ class MyCLI < Thor
   class_option :profile, :default => 'default', :aliases => ['-p'], desc:'AWS profile(s), e.g., -p prod or -p prod,qa'
   class_option :region, :default => 'us-east-1', :aliases => ['-r']
   class_option :tags, :type => :boolean, :aliases => ['-t'], desc: 'Show tags where applicable'
-  class_option :output, :default => 'text', desc: 'Output format (text|json)'
+  class_option :output, :default => 'text', desc: 'Output format (text|json|yaml)'
 
   desc "target_groups ID", "Search Target Groups by target ID (instance/ip/lambda)"
   option :type, :default => 'ip', desc: 'Target type (ip|instance|lambda)'

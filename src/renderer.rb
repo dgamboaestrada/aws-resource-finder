@@ -1,4 +1,5 @@
 require 'json'
+require 'yaml'
 
 # Standardizes JSON responses across commands.
 # Generic schema v1.0
@@ -16,7 +17,7 @@ require 'json'
 #   "errors": [ "..." ]
 # }
 def render_response(output:, command:, profile:, region:, items:, verbose: false, meta: {}, warnings: [], errors: [], resource: nil, filters: {})
-  return unless output == 'json'
+  return unless %w[json yaml].include?(output)
 
   payload = {
     schema_version: '1.0',
@@ -32,7 +33,11 @@ def render_response(output:, command:, profile:, region:, items:, verbose: false
     errors: errors
   }
 
-  puts JSON.pretty_generate(payload)
+  if output == 'json'
+    puts JSON.pretty_generate(payload)
+  else
+    puts YAML.dump(payload)
+  end
 end
 
 
