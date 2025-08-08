@@ -1,33 +1,67 @@
-def get_target_groups(id:, target_type:, lb_arn:nil, region: 'us-east-1',  profile:'default', verbose:false)
-  client = Aws::ElasticLoadBalancingV2::Client.new(
-    profile: profile,
-    region: "us-east-1"
-  )
-  resp = client.describe_target_groups({
-    load_balancer_arn: lb_arn
-  })
+require 'aws-sdk-elasticloadbalancingv2'
+require 'json'
 
-  resp[:target_groups].each do |tg|
-    if tg[:target_type] == target_type
-      puts "Getting targets of type `#{target_type}` with id: `#{id}` for target group: `#{tg[:target_group_arn]}`" if verbose
-      get_target(tg[:target_group_arn], id, client)
+def get_target_groups(id:, target_type:, lb_arn:nil, region:'us-east-1', profile:'default', verbose:false, show_tags:false, output:'text')
+  client = Aws::ElasticLoadBalancingV2::Client.new(profile: profile, region: region)
+
+  marker = nil
+  tgs = []
+  loop do
+    params = {}
+    params[:load_balancer_arn] = lb_arn if lb_arn
+    params[:marker] = marker if marker
+    resp = client.describe_target_groups(params)
+    tgs.concat(resp.target_groups)
+    marker = resp.next_marker
+    break unless marker
+  end
+
+  results = []
+
+  tgs.each do |tg|
+    next unless tg.target_type == target_type
+
+    th_resp = client.describe_target_health(target_group_arn: tg.target_group_arn)
+
+    th_resp.target_health_descriptions.each do |th|
+      next unless th.target.id == id
+
+      item = {
+        target_group_arn: tg.target_group_arn,
+        target_group_name: tg.target_group_name,
+        target_type: tg.target_type,
+        vpc_id: tg.vpc_id,
+        match: {
+          target_id: th.target.id,
+          port: th.target.port,
+          state: th.target_health.state,
+          reason: th.target_health.reason,
+          description: th.target_health.description
+        }
+      }
+
+      if show_tags
+        tags = client.describe_tags(resource_arns: [tg.target_group_arn]).tag_descriptions.first&.tags || []
+        item[:tags] = tags.map { |t| { key: t.key, value: t.value } }
+      end
+
+      results << item
     end
   end
-end
 
-def get_target(target_group_arn, id, client)
-  resp = client.describe_target_health({
-    target_group_arn: target_group_arn,
-  })
-  resp[:target_health_descriptions].each do |th|
-    if th[:target][:id] == id
-      puts "---TG"
-      puts target_group_arn
-      tags = client.describe_tags({
-        resource_arns: [target_group_arn]
-      })
-      puts tags.to_json
-      puts th.to_json
+  if output == 'json'
+    puts JSON.pretty_generate(results)
+  else
+    if results.empty?
+      puts "No matches found for id=#{id} in target groups (type=#{target_type})."
+    else
+      results.each do |r|
+        puts "TG #{r[:target_group_name]} (#{r[:target_group_arn]}) type=#{r[:target_type]} vpc=#{r[:vpc_id]} "\
+             "match=#{r[:match][:target_id]}:#{r[:match][:port]} state=#{r[:match][:state]}"
+        if show_tags && r[:tags]&.any?
+          puts "  tags: " + r[:tags].map { |t| "#{t[:key]}=#{t[:value]}" }.join(', ')
+        end
+      end
     end
   end
 end

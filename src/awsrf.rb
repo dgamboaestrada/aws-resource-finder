@@ -2,66 +2,103 @@
 require 'aws-sdk'
 require 'optparse'
 require 'thor'
-require './network_interfaces'
-require './target_groups'
-require './route53'
-require './volumes'
+require 'json'
+
+require_relative 'network_interfaces'
+require_relative 'target_groups'
+require_relative 'route53'
+require_relative 'volumes'
+require_relative 'acm'
 
 class MyCLI < Thor
   class_option :verbose, :type => :boolean, :aliases => ['-v']
-  class_option :profile, :default => 'default', :aliases => ['-p'], desc:'The AWS profile to use. This accepts one (-p prod) or more separated by commas (-p prod,qa)'
+  class_option :profile, :default => 'default', :aliases => ['-p'], desc:'AWS profile(s), e.g., -p prod or -p prod,qa'
   class_option :region, :default => 'us-east-1', :aliases => ['-r']
-  class_option :tags, :type => :boolean, :aliases => ['-t']
+  class_option :tags, :type => :boolean, :aliases => ['-t'], desc: 'Show tags where applicable'
+  class_option :output, :default => 'text', desc: 'Output format (text|json)'
 
-  desc "target_groups id", "Retrieve target groups by instance id"
-  option :type, :default => 'ip', desc: 'The type to filter. Values: ip, instance, lambda.'
+  desc "target_groups ID", "Search Target Groups by target ID (instance/ip/lambda)"
+  option :type, :default => 'ip', desc: 'Target type (ip|instance|lambda)'
+  option :lb_arn, desc: 'Optional Load Balancer ARN to filter target groups'
   def target_groups(id)
     verbose = options[:verbose]
     p options if verbose
-    options[:profile].split(',').each do |profile|
-      get_target_groups(profile: profile, region: options[:region], verbose: verbose, id: id, target_type: options[:type])
+    options[:profile].split(',').map(&:strip).each do |profile|
+      get_target_groups(
+        profile: profile,
+        region: options[:region],
+        verbose: verbose,
+        id: id,
+        target_type: options[:type],
+        lb_arn: options[:lb_arn],
+        show_tags: options[:tags],
+        output: options[:output]
+      )
     end
   end
 
-  desc "route53_zones value", "Retrieve zones by value"
+  desc "route53_zones VALUE", "Find hosted zones by exact name"
   def route53_zones(value)
     verbose = options[:verbose]
     p options if verbose
-    options[:profile].split(',').each do |profile|
+    options[:profile].split(',').map(&:strip).each do |profile|
       puts ">>>>> Profile: #{profile}"
-      get_route53_zones(profile: profile, region: options[:region], verbose: verbose, value: value)
+      get_route53_zones(profile: profile, region: options[:region], verbose: verbose, value: value, output: options[:output])
     end
   end
 
-  desc "route53_records value", "Retrieve records by value"
-  option :zone_name,  desc: 'The zone name in witch to search. If a zone name is no specified. if the zone is not specified, the record will be searched in all zones.'
+  desc "route53_records VALUE", "Find records by name. If --zone-name is omitted, search across all zones."
+  option :zone_name,  desc: 'Optional hosted zone name to restrict the search'
   def route53_records(value)
     verbose = options[:verbose]
     p options if verbose
-    options[:profile].split(',').each do |profile|
+    options[:profile].split(',').map(&:strip).each do |profile|
       puts ">>>>> Profile: #{profile}"
-      get_route53_records(profile: profile, region: options[:region], verbose: verbose, zone_name: options[:zone_name], value: value)
+      get_route53_records(profile: profile, region: options[:region], verbose: verbose, zone_name: options[:zone_name], value: value, output: options[:output])
     end
   end
 
-  desc "network_interfaces ip profile", "the load balancer arn to filter"
+  desc "network_interfaces IP", "Find ENIs by private/public IP"
   def network_interfaces(ip)
     verbose = options[:verbose]
     p options if verbose
-    options[:profile].split(',').each do |profile|
+    options[:profile].split(',').map(&:strip).each do |profile|
       puts ">>>>> Profile: #{profile}"
-      get_network_interfaces_by_private_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip)
-      get_network_interfaces_by_public_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip)
+      get_network_interfaces_by_private_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output])
+      get_network_interfaces_by_public_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output])
     end
   end
 
-  desc "volume id profile", "Retrieve volumes by id"
+  desc "volumes ID", "Find EBS volumes by ID"
   def volumes(id)
     verbose = options[:verbose]
     p options if verbose
-    options[:profile].split(',').each do |profile|
+    options[:profile].split(',').map(&:strip).each do |profile|
       puts ">>>>> Profile: #{profile}"
-      get_volume_by_id(profile: profile, region: options[:region], verbose: verbose, id: id)
+      get_volume_by_id(profile: profile, region: options[:region], verbose: verbose, id: id, output: options[:output])
+    end
+  end
+
+  desc "acm", "Search ACM certificates by --domain, --san-contains or --serial"
+  option :domain, desc: 'Certificate common name (exact domain)'
+  option :san_contains, desc: 'Substring to search within Subject Alternative Names'
+  option :serial, desc: 'Certificate serial number (hex)'
+  def acm
+    verbose = options[:verbose]
+    if [options[:domain], options[:san_contains], options[:serial]].compact.empty?
+      abort("You must specify at least one: --domain, --san-contains or --serial")
+    end
+    options[:profile].split(',').map(&:strip).each do |profile|
+      puts ">>>>> Profile: #{profile}"
+      search_acm(
+        profile: profile,
+        region: options[:region],
+        domain: options[:domain],
+        san_contains: options[:san_contains],
+        serial: options[:serial],
+        verbose: verbose,
+        output: options[:output]
+      )
     end
   end
 end
