@@ -1,2 +1,12 @@
-#!/bin/bash
-bundle exec ruby -C '../' awsrf.rb "$@"
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve project dir (this script lives in src/bin)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Ensure bundler uses the project's Gemfile and vendored path
+export BUNDLE_GEMFILE="$PROJECT_DIR/Gemfile"
+export AWS_SDK_LOAD_CONFIG=1
+
+exec bundle exec ruby "$PROJECT_DIR/awsrf.rb" "$@"
