@@ -2,10 +2,12 @@ require 'aws-sdk-route53'
 require 'json'
 require_relative 'renderer'
 
-def get_route53_records(region: 'us-east-1', profile:'default', verbose:false, zone_name: nil, value:, output:'text')
+def get_route53_records(region: 'us-east-1', profile:'default', verbose:false, zone_name: nil, value:, output:'text', collect_only: false)
   client = Aws::Route53::Client.new(profile: profile, region: region)
   record_name = "#{value}."
   results = []
+  warnings = []
+  errors = []
 
   zones = []
   if zone_name && !zone_name.empty?
@@ -23,8 +25,13 @@ def get_route53_records(region: 'us-east-1', profile:'default', verbose:false, z
   end
 
   if zones.empty?
-    puts "No hosted zones found#{zone_name ? " with name #{zone_name}" : ""} in Route53"
-    return
+    msg = "No hosted zones found#{zone_name ? " with name #{zone_name}" : ""} in Route53"
+    if collect_only
+      return { resource: 'route53:record', items: [], warnings: [msg], errors: [] }
+    else
+      puts msg
+      return
+    end
   end
 
   zones.each do |zone|
@@ -51,73 +58,63 @@ def get_route53_records(region: 'us-east-1', profile:'default', verbose:false, z
     end
   end
 
-  if output == 'json'
-    render_response(
-      output: output,
-      command: 'route53_records',
-      resource: 'route53:record',
-      profile: profile,
-      region: region,
-      filters: { zone_name: zone_name, value: value },
-      items: results
-    )
-  else
-    text_lines = []
-    if results.empty?
-      text_lines << "No records found for '#{record_name}'"
-    else
-      results.each do |r|
-        text_lines << "Record #{r[:name]} #{r[:type]} ttl=#{r[:ttl]} " \
-                       "values=#{r[:values].join(',')} alias=#{r[:alias_target]} " \
-                       "[zone=#{r[:zone_name]} (#{r[:zone_id]}) private=#{r[:private_zone]}]"
-      end
-    end
-    render_response(
-      output: output,
-      command: 'route53_records',
-      resource: 'route53:record',
-      profile: profile,
-      region: region,
-      filters: { zone_name: zone_name, value: value },
-      items: results,
-      text_lines: text_lines
-    )
+  if collect_only
+    return { resource: 'route53:record', items: results, warnings: warnings, errors: errors }
   end
+
+  text_lines = []
+  if results.empty?
+    text_lines << "No records found for '#{record_name}'"
+  else
+    results.each do |r|
+      text_lines << "Record #{r[:name]} #{r[:type]} ttl=#{r[:ttl]} " \
+                     "values=#{r[:values].join(',')} alias=#{r[:alias_target]} " \
+                     "[zone=#{r[:zone_name]} (#{r[:zone_id]}) private=#{r[:private_zone]}]"
+    end
+  end
+  render_response(
+    output: output,
+    command: 'route53_records',
+    resource: 'route53:record',
+    profile: profile,
+    region: region,
+    filters: { zone_name: zone_name, value: value },
+    items: results,
+    text_lines: text_lines
+  )
 end
 
-def get_route53_zones(region: 'us-east-1', profile:'default', verbose:false, value:, output:'text')
+def get_route53_zones(region: 'us-east-1', profile:'default', verbose:false, value:, output:'text', collect_only: false)
   client = Aws::Route53::Client.new(profile: profile, region: region)
   dns_name = "#{value}."
   zones = client.list_hosted_zones_by_name(dns_name: dns_name).hosted_zones
   zones = zones.select { |z| z.name == dns_name }
 
   if zones.empty?
-    puts "No hosted zones found with name #{dns_name}"
-    return
+    msg = "No hosted zones found with name #{dns_name}"
+    if collect_only
+      return { resource: 'route53:hosted-zone', items: [], warnings: [msg], errors: [] }
+    else
+      puts msg
+      return
+    end
   end
 
-  if output == 'json'
-    items = zones.map { |z| { id: z.id, name: z.name, private_zone: z.config.private_zone } }
-    render_response(
-      output: output,
-      command: 'route53_zones',
-      resource: 'route53:hosted-zone',
-      profile: profile,
-      region: region,
-      filters: { value: value },
-      items: items
-    )
-  else
-    text_lines = zones.map { |z| "Zone found: id=#{z.id}, name=#{z.name}, private_zone=#{z.config.private_zone}" }
-    render_response(
-      output: output,
-      command: 'route53_zones',
-      resource: 'route53:hosted-zone',
-      profile: profile,
-      region: region,
-      filters: { value: value },
-      items: items,
-      text_lines: text_lines
-    )
+  items = zones.map { |z| { id: z.id, name: z.name, private_zone: z.config.private_zone } }
+
+  if collect_only
+    return { resource: 'route53:hosted-zone', items: items, warnings: [], errors: [] }
   end
+
+  text_lines = zones.map { |z| "Zone found: id=#{z.id}, name=#{z.name}, private_zone=#{z.config.private_zone}" }
+  render_response(
+    output: output,
+    command: 'route53_zones',
+    resource: 'route53:hosted-zone',
+    profile: profile,
+    region: region,
+    filters: { value: value },
+    items: items,
+    text_lines: text_lines
+  )
 end

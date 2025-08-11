@@ -2,7 +2,7 @@ require 'aws-sdk-elasticloadbalancingv2'
 require 'json'
 require_relative 'renderer'
 
-def get_target_groups(id:, target_type:, lb_arn:nil, region:'us-east-1', profile:'default', verbose:false, show_tags:false, output:'text')
+def get_target_groups(id:, target_type:, lb_arn:nil, region:'us-east-1', profile:'default', verbose:false, show_tags:false, output:'text', collect_only: false)
   client = Aws::ElasticLoadBalancingV2::Client.new(profile: profile, region: region)
 
   marker = nil
@@ -50,38 +50,30 @@ def get_target_groups(id:, target_type:, lb_arn:nil, region:'us-east-1', profile
     end
   end
 
-  if output == 'json'
-    render_response(
-      output: output,
-      command: 'target_groups',
-      resource: 'elbv2:target-group',
-      profile: profile,
-      region: region,
-      filters: { target_type: target_type, id: id, lb_arn: lb_arn },
-      items: results
-    )
+  if collect_only
+    return { resource: 'elbv2:target-group', items: results, warnings: [], errors: [] }
+  end
+
+  text_lines = []
+  if results.empty?
+    text_lines << "No matches found for id=#{id} in target groups (type=#{target_type})."
   else
-    text_lines = []
-    if results.empty?
-      text_lines << "No matches found for id=#{id} in target groups (type=#{target_type})."
-    else
-      results.each do |r|
-        text_lines << "TG #{r[:target_group_name]} (#{r[:target_group_arn]}) type=#{r[:target_type]} vpc=#{r[:vpc_id]} " \
-                       "match=#{r[:match][:target_id]}:#{r[:match][:port]} state=#{r[:match][:state]}"
-        if show_tags && r[:tags]&
-          text_lines << "  tags: " + r[:tags].map { |t| "#{t[:key]}=#{t[:value]}" }.join(', ')
-        end
+    results.each do |r|
+      text_lines << "TG #{r[:target_group_name]} (#{r[:target_group_arn]}) type=#{r[:target_type]} vpc=#{r[:vpc_id]} " \
+                     "match=#{r[:match][:target_id]}:#{r[:match][:port]} state=#{r[:match][:state]}"
+      if show_tags && r[:tags]&
+        text_lines << "  tags: " + r[:tags].map { |t| "#{t[:key]}=#{t[:value]}" }.join(', ')
       end
     end
-    render_response(
-      output: output,
-      command: 'target_groups',
-      resource: 'elbv2:target-group',
-      profile: profile,
-      region: region,
-      filters: { target_type: target_type, id: id, lb_arn: lb_arn },
-      items: results,
-      text_lines: text_lines
-    )
   end
+  render_response(
+    output: output,
+    command: 'target_groups',
+    resource: 'elbv2:target-group',
+    profile: profile,
+    region: region,
+    filters: { target_type: target_type, id: id, lb_arn: lb_arn },
+    items: results,
+    text_lines: text_lines
+  )
 end

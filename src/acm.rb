@@ -2,7 +2,7 @@ require 'aws-sdk-acm'
 require 'json'
 require_relative 'renderer'
 
-def search_acm(profile:, region:, domain: nil, san_contains: nil, serial: nil, verbose:false, output:'text')
+def search_acm(profile:, region:, domain: nil, san_contains: nil, serial: nil, verbose:false, output:'text', collect_only: false)
   client = Aws::ACM::Client.new(profile: profile, region: region)
 
   summaries = client.list_certificates.certificate_summary_list
@@ -35,41 +35,33 @@ def search_acm(profile:, region:, domain: nil, san_contains: nil, serial: nil, v
     }
   end
 
-  if output == 'json'
-    render_response(
-      output: output,
-      command: 'acm',
-      resource: 'acm:certificate',
-      profile: profile,
-      region: region,
-      filters: { domain: domain, san_contains: san_contains, serial: serial },
-      items: matches
-    )
+  if collect_only
+    return { resource: 'acm:certificate', items: matches, warnings: [], errors: [] }
+  end
+
+  text_lines = []
+  if matches.empty?
+    text_lines << "No certificates found."
   else
-    text_lines = []
-    if matches.empty?
-      text_lines << "No certificates found."
-    else
-      matches.each do |c|
-        text_lines << "ACM #{c[:arn]} domain=#{c[:domain_name]} status=#{c[:status]} " \
-                       "valid=#{c[:not_before]}..#{c[:not_after]} serial=#{c[:serial]}"
-        if verbose
-          text_lines << "  SANs: #{Array(c[:san]).join(', ')}"
-          text_lines << "  InUseBy: #{Array(c[:in_use_by]).join(', ')}"
-        end
+    matches.each do |c|
+      text_lines << "ACM #{c[:arn]} domain=#{c[:domain_name]} status=#{c[:status]} " \
+                     "valid=#{c[:not_before]}..#{c[:not_after]} serial=#{c[:serial]}"
+      if verbose
+        text_lines << "  SANs: #{Array(c[:san]).join(', ')}"
+        text_lines << "  InUseBy: #{Array(c[:in_use_by]).join(', ')}"
       end
     end
-    render_response(
-      output: output,
-      command: 'acm',
-      resource: 'acm:certificate',
-      profile: profile,
-      region: region,
-      filters: { domain: domain, san_contains: san_contains, serial: serial },
-      items: matches,
-      text_lines: text_lines
-    )
   end
+  render_response(
+    output: output,
+    command: 'acm',
+    resource: 'acm:certificate',
+    profile: profile,
+    region: region,
+    filters: { domain: domain, san_contains: san_contains, serial: serial },
+    items: matches,
+    text_lines: text_lines
+  )
 end
 
 

@@ -24,18 +24,48 @@ class MyCLI < Thor
   def target_groups(id)
     verbose = options[:verbose]
     p options if verbose
-    options[:profile].split(',').map(&:strip).each do |profile|
-      execute_with_aws_errors(command: 'target_groups', profile: profile, region: options[:region], output: options[:output]) do
-        get_target_groups(
-          profile: profile,
-          region: options[:region],
-          verbose: verbose,
-          id: id,
-          target_type: options[:type],
-          lb_arn: options[:lb_arn],
-          show_tags: options[:tags],
-          output: options[:output]
-        )
+    if %w[json yaml].include?(options[:output])
+      aggregated = []
+      options[:profile].split(',').map(&:strip).each do |profile|
+        begin
+          res = get_target_groups(
+            profile: profile,
+            region: options[:region],
+            verbose: verbose,
+            id: id,
+            target_type: options[:type],
+            lb_arn: options[:lb_arn],
+            show_tags: options[:tags],
+            output: options[:output],
+            collect_only: true
+          )
+          aggregated << { profile: profile, region: options[:region], items: res[:items], warnings: res[:warnings], errors: res[:errors] }
+        rescue ArgumentError => e
+          message = (e.message =~ /Cached SSO Token is expired/i) ? "AWS SSO token expired for profile #{profile}. Run: aws sso login --profile #{profile}" : e.message
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue Aws::Errors::MissingCredentialsError
+          message = "Missing AWS credentials for profile #{profile}. Set AWS_PROFILE or run: aws configure sso --profile #{profile}"
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue StandardError => e
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [e.class.name + ': ' + e.message] }
+        end
+      end
+      render_aggregated_response(output: options[:output], command: 'target_groups', resource: 'elbv2:target-group', region: options[:region], filters: { id: id, target_type: options[:type], lb_arn: options[:lb_arn] }, profiles: aggregated)
+    else
+      options[:profile].split(',').map(&:strip).each do |profile|
+        puts ">>>>> Profile: #{profile}"
+        execute_with_aws_errors(command: 'target_groups', profile: profile, region: options[:region], output: options[:output]) do
+          get_target_groups(
+            profile: profile,
+            region: options[:region],
+            verbose: verbose,
+            id: id,
+            target_type: options[:type],
+            lb_arn: options[:lb_arn],
+            show_tags: options[:tags],
+            output: options[:output]
+          )
+        end
       end
     end
   end
@@ -44,10 +74,29 @@ class MyCLI < Thor
   def route53_zones(value)
     verbose = options[:verbose]
     p options if verbose
-    options[:profile].split(',').map(&:strip).each do |profile|
-      puts ">>>>> Profile: #{profile}"
-      execute_with_aws_errors(command: 'route53_zones', profile: profile, region: options[:region], output: options[:output], filters: { value: value }) do
-        get_route53_zones(profile: profile, region: options[:region], verbose: verbose, value: value, output: options[:output])
+    if %w[json yaml].include?(options[:output])
+      aggregated = []
+      options[:profile].split(',').map(&:strip).each do |profile|
+        begin
+          res = get_route53_zones(profile: profile, region: options[:region], verbose: verbose, value: value, output: options[:output], collect_only: true)
+          aggregated << { profile: profile, region: options[:region], items: res[:items], warnings: res[:warnings], errors: res[:errors] }
+        rescue ArgumentError => e
+          message = (e.message =~ /Cached SSO Token is expired/i) ? "AWS SSO token expired for profile #{profile}. Run: aws sso login --profile #{profile}" : e.message
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue Aws::Errors::MissingCredentialsError
+          message = "Missing AWS credentials for profile #{profile}. Set AWS_PROFILE or run: aws configure sso --profile #{profile}"
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue StandardError => e
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [e.class.name + ': ' + e.message] }
+        end
+      end
+      render_aggregated_response(output: options[:output], command: 'route53_zones', resource: 'route53:hosted-zone', region: options[:region], filters: { value: value }, profiles: aggregated)
+    else
+      options[:profile].split(',').map(&:strip).each do |profile|
+        puts ">>>>> Profile: #{profile}"
+        execute_with_aws_errors(command: 'route53_zones', profile: profile, region: options[:region], output: options[:output], filters: { value: value }) do
+          get_route53_zones(profile: profile, region: options[:region], verbose: verbose, value: value, output: options[:output])
+        end
       end
     end
   end
@@ -57,10 +106,29 @@ class MyCLI < Thor
   def route53_records(value)
     verbose = options[:verbose]
     p options if verbose
-    options[:profile].split(',').map(&:strip).each do |profile|
-      puts ">>>>> Profile: #{profile}"
-      execute_with_aws_errors(command: 'route53_records', profile: profile, region: options[:region], output: options[:output], filters: { value: value, zone_name: options[:zone_name] }) do
-        get_route53_records(profile: profile, region: options[:region], verbose: verbose, zone_name: options[:zone_name], value: value, output: options[:output])
+    if %w[json yaml].include?(options[:output])
+      aggregated = []
+      options[:profile].split(',').map(&:strip).each do |profile|
+        begin
+          res = get_route53_records(profile: profile, region: options[:region], verbose: verbose, zone_name: options[:zone_name], value: value, output: options[:output], collect_only: true)
+          aggregated << { profile: profile, region: options[:region], items: res[:items], warnings: res[:warnings], errors: res[:errors] }
+        rescue ArgumentError => e
+          message = (e.message =~ /Cached SSO Token is expired/i) ? "AWS SSO token expired for profile #{profile}. Run: aws sso login --profile #{profile}" : e.message
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue Aws::Errors::MissingCredentialsError
+          message = "Missing AWS credentials for profile #{profile}. Set AWS_PROFILE or run: aws configure sso --profile #{profile}"
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue StandardError => e
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [e.class.name + ': ' + e.message] }
+        end
+      end
+      render_aggregated_response(output: options[:output], command: 'route53_records', resource: 'route53:record', region: options[:region], filters: { value: value, zone_name: options[:zone_name] }, profiles: aggregated)
+    else
+      options[:profile].split(',').map(&:strip).each do |profile|
+        puts ">>>>> Profile: #{profile}"
+        execute_with_aws_errors(command: 'route53_records', profile: profile, region: options[:region], output: options[:output], filters: { value: value, zone_name: options[:zone_name] }) do
+          get_route53_records(profile: profile, region: options[:region], verbose: verbose, zone_name: options[:zone_name], value: value, output: options[:output])
+        end
       end
     end
   end
@@ -69,11 +137,34 @@ class MyCLI < Thor
   def network_interfaces(ip)
     verbose = options[:verbose]
     p options if verbose
-    options[:profile].split(',').map(&:strip).each do |profile|
-      puts ">>>>> Profile: #{profile}"
-      execute_with_aws_errors(command: 'network_interfaces', profile: profile, region: options[:region], output: options[:output], filters: { ip: ip }) do
-        get_network_interfaces_by_private_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output])
-        get_network_interfaces_by_public_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output])
+    if %w[json yaml].include?(options[:output])
+      aggregated = []
+      options[:profile].split(',').map(&:strip).each do |profile|
+        begin
+          res_priv = get_network_interfaces_by_private_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output], collect_only: true)
+          res_pub  = get_network_interfaces_by_public_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output], collect_only: true)
+          items = Array(res_priv[:items]) + Array(res_pub[:items])
+          warnings = Array(res_priv[:warnings]) + Array(res_pub[:warnings])
+          errors = Array(res_priv[:errors]) + Array(res_pub[:errors])
+          aggregated << { profile: profile, region: options[:region], items: items, warnings: warnings, errors: errors }
+        rescue ArgumentError => e
+          message = (e.message =~ /Cached SSO Token is expired/i) ? "AWS SSO token expired for profile #{profile}. Run: aws sso login --profile #{profile}" : e.message
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue Aws::Errors::MissingCredentialsError
+          message = "Missing AWS credentials for profile #{profile}. Set AWS_PROFILE or run: aws configure sso --profile #{profile}"
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue StandardError => e
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [e.class.name + ': ' + e.message] }
+        end
+      end
+      render_aggregated_response(output: options[:output], command: 'network_interfaces', resource: 'ec2:network-interface', region: options[:region], filters: { ip: ip }, profiles: aggregated)
+    else
+      options[:profile].split(',').map(&:strip).each do |profile|
+        puts ">>>>> Profile: #{profile}"
+        execute_with_aws_errors(command: 'network_interfaces', profile: profile, region: options[:region], output: options[:output], filters: { ip: ip }) do
+          get_network_interfaces_by_private_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output])
+          get_network_interfaces_by_public_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output])
+        end
       end
     end
   end
@@ -82,10 +173,29 @@ class MyCLI < Thor
   def volumes(id)
     verbose = options[:verbose]
     p options if verbose
-    options[:profile].split(',').map(&:strip).each do |profile|
-      puts ">>>>> Profile: #{profile}"
-      execute_with_aws_errors(command: 'volumes', profile: profile, region: options[:region], output: options[:output], filters: { id: id }) do
-        get_volume_by_id(profile: profile, region: options[:region], verbose: verbose, id: id, output: options[:output])
+    if %w[json yaml].include?(options[:output])
+      aggregated = []
+      options[:profile].split(',').map(&:strip).each do |profile|
+        begin
+          res = get_volume_by_id(profile: profile, region: options[:region], verbose: verbose, id: id, output: options[:output], collect_only: true)
+          aggregated << { profile: profile, region: options[:region], items: res[:items], warnings: res[:warnings], errors: res[:errors] }
+        rescue ArgumentError => e
+          message = (e.message =~ /Cached SSO Token is expired/i) ? "AWS SSO token expired for profile #{profile}. Run: aws sso login --profile #{profile}" : e.message
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue Aws::Errors::MissingCredentialsError
+          message = "Missing AWS credentials for profile #{profile}. Set AWS_PROFILE or run: aws configure sso --profile #{profile}"
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue StandardError => e
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [e.class.name + ': ' + e.message] }
+        end
+      end
+      render_aggregated_response(output: options[:output], command: 'volumes', resource: 'ec2:volume', region: options[:region], filters: { id: id }, profiles: aggregated)
+    else
+      options[:profile].split(',').map(&:strip).each do |profile|
+        puts ">>>>> Profile: #{profile}"
+        execute_with_aws_errors(command: 'volumes', profile: profile, region: options[:region], output: options[:output], filters: { id: id }) do
+          get_volume_by_id(profile: profile, region: options[:region], verbose: verbose, id: id, output: options[:output])
+        end
       end
     end
   end
@@ -99,18 +209,46 @@ class MyCLI < Thor
     if [options[:domain], options[:san_contains], options[:serial]].compact.empty?
       abort("You must specify at least one: --domain, --san-contains or --serial")
     end
-    options[:profile].split(',').map(&:strip).each do |profile|
-      puts ">>>>> Profile: #{profile}"
-      execute_with_aws_errors(command: 'acm', profile: profile, region: options[:region], output: options[:output], filters: { domain: options[:domain], san_contains: options[:san_contains], serial: options[:serial] }) do
-        search_acm(
-          profile: profile,
-          region: options[:region],
-          domain: options[:domain],
-          san_contains: options[:san_contains],
-          serial: options[:serial],
-          verbose: verbose,
-          output: options[:output]
-        )
+    if %w[json yaml].include?(options[:output])
+      aggregated = []
+      options[:profile].split(',').map(&:strip).each do |profile|
+        begin
+          res = search_acm(
+            profile: profile,
+            region: options[:region],
+            domain: options[:domain],
+            san_contains: options[:san_contains],
+            serial: options[:serial],
+            verbose: verbose,
+            output: options[:output],
+            collect_only: true
+          )
+          aggregated << { profile: profile, region: options[:region], items: res[:items], warnings: res[:warnings], errors: res[:errors] }
+        rescue ArgumentError => e
+          message = (e.message =~ /Cached SSO Token is expired/i) ? "AWS SSO token expired for profile #{profile}. Run: aws sso login --profile #{profile}" : e.message
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue Aws::Errors::MissingCredentialsError
+          message = "Missing AWS credentials for profile #{profile}. Set AWS_PROFILE or run: aws configure sso --profile #{profile}"
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [message] }
+        rescue StandardError => e
+          aggregated << { profile: profile, region: options[:region], items: [], warnings: [], errors: [e.class.name + ': ' + e.message] }
+        end
+      end
+      render_aggregated_response(output: options[:output], command: 'acm', resource: 'acm:certificate', region: options[:region], filters: { domain: options[:domain], san_contains: options[:san_contains], serial: options[:serial] }, profiles: aggregated)
+    else
+      options[:profile].split(',').map(&:strip).each do |profile|
+        puts ">>>>> Profile: #{profile}"
+        execute_with_aws_errors(command: 'acm', profile: profile, region: options[:region], output: options[:output], filters: { domain: options[:domain], san_contains: options[:san_contains], serial: options[:serial] }) do
+          search_acm(
+            profile: profile,
+            region: options[:region],
+            domain: options[:domain],
+            san_contains: options[:san_contains],
+            serial: options[:serial],
+            verbose: verbose,
+            output: options[:output]
+          )
+        end
       end
     end
   end

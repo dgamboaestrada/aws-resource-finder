@@ -2,25 +2,25 @@ require 'aws-sdk-ec2'
 require 'json'
 require_relative 'renderer'
 
-def get_network_interfaces_by_private_ip(ip:, region:'us-east-1', profile:'default', verbose:false, output:'text')
+def get_network_interfaces_by_private_ip(ip:, region:'us-east-1', profile:'default', verbose:false, output:'text', collect_only: false)
   client = Aws::EC2::Client.new(profile: profile, region: region)
 
   resp = client.describe_network_interfaces(filters: [{ name: "private-ip-address", values: [ip] }])
   pp resp if verbose
 
-  render_network_interfaces(resp.network_interfaces, profile: profile, region: region, output: output)
+  render_network_interfaces(resp.network_interfaces, profile: profile, region: region, output: output, collect_only: collect_only)
 end
 
-def get_network_interfaces_by_public_ip(ip:, region:'us-east-1', profile:'default', verbose:false, output:'text')
+def get_network_interfaces_by_public_ip(ip:, region:'us-east-1', profile:'default', verbose:false, output:'text', collect_only: false)
   client = Aws::EC2::Client.new(profile: profile, region: region)
 
   resp = client.describe_network_interfaces(filters: [{ name: "association.public-ip", values: [ip] }])
   pp resp if verbose
 
-  render_network_interfaces(resp.network_interfaces, profile: profile, region: region, output: output)
+  render_network_interfaces(resp.network_interfaces, profile: profile, region: region, output: output, collect_only: collect_only)
 end
 
-def render_network_interfaces(enis, profile:, region:, output: 'text')
+def render_network_interfaces(enis, profile:, region:, output: 'text', collect_only: false)
   items = enis.map { |ni|
     {
       id: ni.network_interface_id,
@@ -35,6 +35,10 @@ def render_network_interfaces(enis, profile:, region:, output: 'text')
       tags: (ni.tag_set || []).map { |t| { key: t.key, value: t.value } }
     }
   }
+
+  if collect_only
+    return { resource: 'ec2:network-interface', items: items, warnings: [], errors: [] }
+  end
 
   text_lines = []
   if enis.empty?

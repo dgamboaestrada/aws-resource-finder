@@ -60,4 +60,48 @@ def render_response(output:, command:, profile:, region:, items:, verbose: false
   end
 end
 
+def render_aggregated_response(output:, command:, resource:, region:, filters:, profiles:, meta: {})
+  unless %w[text json yaml].include?(output)
+    return
+  end
+
+  if output == 'text'
+    # For aggregated text, print a compact summary per profile
+    total = profiles.reduce(0) { |acc, p| acc + (p[:items]&.size || 0) }
+    header = [
+      "command=#{command}",
+      ("resource=#{resource}" unless resource.nil? || resource.to_s.empty?),
+      ("region=#{region}" unless region.nil? || region.to_s.empty?),
+      ("count=#{total}"),
+      ("filters=#{filters.compact.to_h.to_json}" unless filters.nil? || filters.empty?)
+    ].compact.join(' ')
+    puts header
+    profiles.each do |p|
+      puts "profile=#{p[:profile]} region=#{p[:region]} count=#{p[:items]&.size || 0}"
+      Array(p[:warnings]).each { |w| puts "warning: #{w}" }
+      Array(p[:errors]).each { |e| puts "error: #{e}" }
+      Array(p[:items]).each { |it| puts JSON.generate(it) }
+    end
+    return
+  end
+
+  total_count = profiles.reduce(0) { |acc, p| acc + (p[:items]&.size || 0) }
+  payload = {
+    schema_version: '1.0',
+    command: command,
+    resource: resource,
+    region: region,
+    filters: filters,
+    count: total_count,
+    profiles: profiles,
+    meta: meta
+  }
+
+  if output == 'json'
+    puts JSON.pretty_generate(payload)
+  else
+    puts YAML.dump(payload)
+  end
+end
+
 
