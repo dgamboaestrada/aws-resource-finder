@@ -1,16 +1,29 @@
 # aws-resource-finder
 AWS resource finder
 
-# Install
-```bash
+# Setup
+
+## Installation
+```sh
 git clone git@github.com:dgamboaestrada/aws-resource-finder.git
 cd aws-resource-finder/src
 bundle config set path 'vendor/bundle' # (Optional) only if you do not want to do a global installation of the libraries.
 bundle install
-ln -s $(pwd)/bin/awsrf /usr/local/bin/awsrf
+sudo ln -sf "$(pwd)/src/bin/awsrf" /usr/local/bin/awsrf
+awsrf help
 ```
 
-# Uninstall
+## Clean install (reset vendor)
+```sh
+cd src/
+rm -rf vendor .bundle Gemfile.lock
+bundle config set path vendor/bundle
+bundle lock --add-platform ruby
+bundle install --jobs=4
+bundle exec ruby awsrf.rb help
+```
+
+## Uninstall
 ```bash
 rm /usr/local/bin/awsrf
 ```
@@ -19,7 +32,7 @@ rm /usr/local/bin/awsrf
 ```bash
 ./awsrf help
 ./awsrf target_groups -p <aws-profile> -t <ip>
-./awsrf target_groups -p=bg-prod-ls -t --type=instance <instance-id>
+./awsrf target_groups -p=prod -t --type=instance <instance-id>
 ./awsrf network_interfaces  <ip>
 ./awsrf route53_zones example.com -p prod
 ./awsrf route53_zones example.com -p prod,qa
