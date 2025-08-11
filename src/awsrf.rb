@@ -25,16 +25,18 @@ class MyCLI < Thor
     verbose = options[:verbose]
     p options if verbose
     options[:profile].split(',').map(&:strip).each do |profile|
-      get_target_groups(
-        profile: profile,
-        region: options[:region],
-        verbose: verbose,
-        id: id,
-        target_type: options[:type],
-        lb_arn: options[:lb_arn],
-        show_tags: options[:tags],
-        output: options[:output]
-      )
+      execute_with_aws_errors(command: 'target_groups', profile: profile, region: options[:region], output: options[:output]) do
+        get_target_groups(
+          profile: profile,
+          region: options[:region],
+          verbose: verbose,
+          id: id,
+          target_type: options[:type],
+          lb_arn: options[:lb_arn],
+          show_tags: options[:tags],
+          output: options[:output]
+        )
+      end
     end
   end
 
@@ -44,7 +46,9 @@ class MyCLI < Thor
     p options if verbose
     options[:profile].split(',').map(&:strip).each do |profile|
       puts ">>>>> Profile: #{profile}"
-      get_route53_zones(profile: profile, region: options[:region], verbose: verbose, value: value, output: options[:output])
+      execute_with_aws_errors(command: 'route53_zones', profile: profile, region: options[:region], output: options[:output], filters: { value: value }) do
+        get_route53_zones(profile: profile, region: options[:region], verbose: verbose, value: value, output: options[:output])
+      end
     end
   end
 
@@ -55,7 +59,9 @@ class MyCLI < Thor
     p options if verbose
     options[:profile].split(',').map(&:strip).each do |profile|
       puts ">>>>> Profile: #{profile}"
-      get_route53_records(profile: profile, region: options[:region], verbose: verbose, zone_name: options[:zone_name], value: value, output: options[:output])
+      execute_with_aws_errors(command: 'route53_records', profile: profile, region: options[:region], output: options[:output], filters: { value: value, zone_name: options[:zone_name] }) do
+        get_route53_records(profile: profile, region: options[:region], verbose: verbose, zone_name: options[:zone_name], value: value, output: options[:output])
+      end
     end
   end
 
@@ -65,8 +71,10 @@ class MyCLI < Thor
     p options if verbose
     options[:profile].split(',').map(&:strip).each do |profile|
       puts ">>>>> Profile: #{profile}"
-      get_network_interfaces_by_private_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output])
-      get_network_interfaces_by_public_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output])
+      execute_with_aws_errors(command: 'network_interfaces', profile: profile, region: options[:region], output: options[:output], filters: { ip: ip }) do
+        get_network_interfaces_by_private_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output])
+        get_network_interfaces_by_public_ip(profile: profile, region: options[:region], verbose: verbose, ip: ip, output: options[:output])
+      end
     end
   end
 
@@ -76,7 +84,9 @@ class MyCLI < Thor
     p options if verbose
     options[:profile].split(',').map(&:strip).each do |profile|
       puts ">>>>> Profile: #{profile}"
-      get_volume_by_id(profile: profile, region: options[:region], verbose: verbose, id: id, output: options[:output])
+      execute_with_aws_errors(command: 'volumes', profile: profile, region: options[:region], output: options[:output], filters: { id: id }) do
+        get_volume_by_id(profile: profile, region: options[:region], verbose: verbose, id: id, output: options[:output])
+      end
     end
   end
 
@@ -91,16 +101,35 @@ class MyCLI < Thor
     end
     options[:profile].split(',').map(&:strip).each do |profile|
       puts ">>>>> Profile: #{profile}"
-      search_acm(
-        profile: profile,
-        region: options[:region],
-        domain: options[:domain],
-        san_contains: options[:san_contains],
-        serial: options[:serial],
-        verbose: verbose,
-        output: options[:output]
-      )
+      execute_with_aws_errors(command: 'acm', profile: profile, region: options[:region], output: options[:output], filters: { domain: options[:domain], san_contains: options[:san_contains], serial: options[:serial] }) do
+        search_acm(
+          profile: profile,
+          region: options[:region],
+          domain: options[:domain],
+          san_contains: options[:san_contains],
+          serial: options[:serial],
+          verbose: verbose,
+          output: options[:output]
+        )
+      end
     end
+  end
+
+  private
+  def execute_with_aws_errors(command:, profile:, region:, output:, filters: {})
+    yield
+  rescue ArgumentError => e
+    message = if e.message =~ /Cached SSO Token is expired/i
+      "AWS SSO token expired for profile #{profile}. Run: aws sso login --profile #{profile}"
+    else
+      e.message
+    end
+    render_response(output: output, command: command, resource: nil, profile: profile, region: region, filters: filters, items: [], errors: [message])
+  rescue Aws::Errors::MissingCredentialsError => e
+    message = "Missing AWS credentials for profile #{profile}. Set AWS_PROFILE or run: aws configure sso --profile #{profile}"
+    render_response(output: output, command: command, resource: nil, profile: profile, region: region, filters: filters, items: [], errors: [message])
+  rescue StandardError => e
+    render_response(output: output, command: command, resource: nil, profile: profile, region: region, filters: filters, items: [], errors: [e.class.name + ': ' + e.message])
   end
 end
 

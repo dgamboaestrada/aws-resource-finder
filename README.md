@@ -3,7 +3,7 @@ AWS resource finder
 
 # Install
 ```bash
-git clone 
+git clone
 cd aws-resource-finder/src
 bundle config set path 'vendor/bundle' # (Optional) only if you do not want to do a global installation of the libraries.
 bundle install
@@ -42,3 +42,19 @@ This project used:
 
 # References
 - [AWS SDK for Ruby V3](https://docs.aws.amazon.com/sdk-for-ruby/v3/api/)
+
+# Instala rbenv y ruby-build
+brew install rbenv ruby-build
+
+# Inicializa rbenv (zsh)
+echo 'eval "$(rbenv init - zsh)"' >> ~/.zshrc
+exec zsh
+
+# Instala y selecciona Ruby moderno
+rbenv install 3.3.4
+rbenv global 3.3.4
+
+# Instala bundler en ese Ruby
+gem install bundler
+bundler -v
+ruby -v
