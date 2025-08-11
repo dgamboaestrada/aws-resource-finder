@@ -30,6 +30,7 @@ rm /usr/local/bin/awsrf
 
 # Usage
 ```bash
+./awsrf -v
 ./awsrf help
 ./awsrf target_groups -p <aws-profile> -t <ip>
 ./awsrf target_groups -p=prod -t --type=instance <instance-id>
@@ -49,7 +50,7 @@ rm /usr/local/bin/awsrf
 - **-p, --profile=<name>[,name2]**: AWS profiles (comma-separated). Default: `default`.
   - Example: `-p prod,qa`
 - **-r, --region=<aws-region>**: AWS region. Default: `us-east-1`.
-- **-v, --verbose**: enables verbose mode for debugging.
+- **--verbose**: enables verbose mode for debugging.
 - **-t, --tags**: includes tags where applicable.
 
 # Examples

@@ -12,11 +12,30 @@ require_relative 'acm'
 require_relative 'renderer'
 
 class MyCLI < Thor
-  class_option :verbose, :type => :boolean, :aliases => ['-v']
+  map %w[-v -V --version] => :version
+  class_option :verbose, :type => :boolean
   class_option :profile, :default => 'default', :aliases => ['-p'], desc:'AWS profile(s), e.g., -p prod or -p prod,qa'
   class_option :region, :default => 'us-east-1', :aliases => ['-r']
   class_option :tags, :type => :boolean, :aliases => ['-t'], desc: 'Show tags where applicable'
   class_option :output, :default => 'text', desc: 'Output format (text|json|yaml)'
+  desc "version", "Print awsrf version"
+  def version
+    ver = read_version_file
+    if %w[json yaml].include?(options[:output])
+      render_response(
+        output: options[:output],
+        command: 'version',
+        resource: 'cli:version',
+        profile: nil,
+        region: nil,
+        filters: {},
+        items: [{ version: ver }]
+      )
+    else
+      puts "awsrf #{ver}"
+    end
+  end
+
 
   desc "target_groups ID", "Search Target Groups by target ID (instance/ip/lambda)"
   option :type, :default => 'ip', desc: 'Target type (ip|instance|lambda)'
@@ -254,6 +273,14 @@ class MyCLI < Thor
   end
 
   private
+  def read_version_file
+    version_file = File.expand_path('../../version.txt', __FILE__)
+    if File.exist?(version_file)
+      File.read(version_file).strip
+    else
+      '0.0.0'
+    end
+  end
   def execute_with_aws_errors(command:, profile:, region:, output:, filters: {})
     yield
   rescue ArgumentError => e
