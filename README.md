@@ -41,9 +41,20 @@ rm /usr/local/bin/awsrf
 ./awsrf volumes <id> -p dev,qa,prod
 ```
 
+## Global options
+- **--output=text|json|yaml**: output format. Default: `text`.
+  - Examples:
+    - `./awsrf route53_zones example.com -p prod --output=json`
+    - `./awsrf target_groups -p prod --type=ip 10.0.0.5 --output=yaml`
+- **-p, --profile=<name>[,name2]**: AWS profiles (comma-separated). Default: `default`.
+  - Example: `-p prod,qa`
+- **-r, --region=<aws-region>**: AWS region. Default: `us-east-1`.
+- **-v, --verbose**: enables verbose mode for debugging.
+- **-t, --tags**: includes tags where applicable.
+
 # Examples
 
-This project used:
+This project uses:
 - [aws-sdk for ruby](https://docs.aws.amazon.com/sdk-for-ruby/v3/api/)
 - [Thor](https://github.com/rails/thor), [Wiki](https://github.com/rails/thor/wiki)
 
