@@ -1,36 +1,85 @@
 # aws-resource-finder
 AWS resource finder
 
-# Install
-```bash
-git clone 
+# Setup
+
+## Installation
+```sh
+git clone git@github.com:dgamboaestrada/aws-resource-finder.git
 cd aws-resource-finder/src
 bundle config set path 'vendor/bundle' # (Optional) only if you do not want to do a global installation of the libraries.
 bundle install
-ln -s $(pwd)/bin/awsrf /usr/local/bin/awsrf
+sudo ln -sf "$(pwd)/src/bin/awsrf" /usr/local/bin/awsrf
+awsrf help
 ```
 
-# Uninstall
+## Clean install (reset vendor)
+```sh
+cd src/
+rm -rf vendor .bundle Gemfile.lock
+bundle config set path vendor/bundle
+bundle lock --add-platform ruby
+bundle install --jobs=4
+bundle exec ruby awsrf.rb help
+```
+
+## Uninstall
 ```bash
 rm /usr/local/bin/awsrf
 ```
 
 # Usage
 ```bash
+./awsrf -v
 ./awsrf help
 ./awsrf target_groups -p <aws-profile> -t <ip>
-./awsrf target_groups -p=bg-prod-ls -t --type=instance <instance-id>
+./awsrf target_groups -p=prod -t --type=instance <instance-id>
 ./awsrf network_interfaces  <ip>
 ./awsrf route53_zones example.com -p prod
 ./awsrf route53_zones example.com -p prod,qa
 ./awsrf route53_records example.com --zone_name=example.com -p prod
 ./awsrf route53_records example.com --zone_name=example.com -p prod,qa
-./awsrf volumes <id> -p bg-dev,bg-qa,bg-prod,bg-prod-ls,bg-main
+./awsrf volumes <id> -p dev,qa,prod
+```
+
+## Global options
+- **--output=text|json|yaml**: output format. Default: `text`.
+  - Examples:
+    - `./awsrf route53_zones example.com -p prod --output=json`
+    - `./awsrf target_groups -p prod --type=ip 10.0.0.5 --output=yaml`
+- **-p, --profile=<name>[,name2]**: AWS profiles (comma-separated). Default: `default`.
+  - Example: `-p prod,qa`
+- **-r, --region=<aws-region>**: AWS region. Default: `us-east-1`.
+- **--verbose**: enables verbose mode for debugging.
+- **-t, --tags**: includes tags where applicable.
+
+### Aggregated JSON/YAML output (since 0.2.0)
+When multiple profiles are provided and `--output` is `json` or `yaml`, the CLI returns a single aggregated document with this shape:
+
+```json
+{
+  "schema_version": "1.0",
+  "command": "<subcommand>",
+  "resource": "<service>:<entity>",
+  "region": "us-east-1",
+  "filters": { /* input filters */ },
+  "count": 3,
+  "profiles": [
+    {
+      "profile": "prod",
+      "region": "us-east-1",
+      "items": [ /* results for this profile */ ],
+      "warnings": [],
+      "errors": []
+    }
+  ],
+  "meta": {}
+}
 ```
 
 # Examples
 
-This project used:
+This project uses:
 - [aws-sdk for ruby](https://docs.aws.amazon.com/sdk-for-ruby/v3/api/)
 - [Thor](https://github.com/rails/thor), [Wiki](https://github.com/rails/thor/wiki)
 

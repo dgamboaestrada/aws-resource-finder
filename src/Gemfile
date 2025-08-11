@@ -7,3 +7,5 @@ git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
 gem 'dotenv'
 gem 'aws-sdk'
 gem 'thor'
+
+gem "rexml", "~> 3.4"
