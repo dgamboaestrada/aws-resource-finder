@@ -53,6 +53,30 @@ rm /usr/local/bin/awsrf
 - **--verbose**: enables verbose mode for debugging.
 - **-t, --tags**: includes tags where applicable.
 
+### Aggregated JSON/YAML output (since 0.2.0)
+When multiple profiles are provided and `--output` is `json` or `yaml`, the CLI returns a single aggregated document with this shape:
+
+```json
+{
+  "schema_version": "1.0",
+  "command": "<subcommand>",
+  "resource": "<service>:<entity>",
+  "region": "us-east-1",
+  "filters": { /* input filters */ },
+  "count": 3,
+  "profiles": [
+    {
+      "profile": "prod",
+      "region": "us-east-1",
+      "items": [ /* results for this profile */ ],
+      "warnings": [],
+      "errors": []
+    }
+  ],
+  "meta": {}
+}
+```
+
 # Examples
 
 This project uses:
