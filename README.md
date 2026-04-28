@@ -3,30 +3,32 @@ AWS resource finder
 
 # Setup
 
-## Installation
+## Docker
+
+You can run this project using Docker and Docker Compose.
+
+### Running with Docker Compose
+
+Ensure you have your AWS credentials configured in `~/.aws`.
+An optional `.env` file can be used in the project root to manage environment variables.
+
 ```sh
-git clone git@github.com:dgamboaestrada/aws-resource-finder.git
-cd aws-resource-finder/src
-bundle config set path 'vendor/bundle' # (Optional) only if you do not want to do a global installation of the libraries.
-bundle install
-sudo ln -sf "$(pwd)/src/bin/awsrf" /usr/local/bin/awsrf
-awsrf help
+docker-compose run --rm awsrf [command]
 ```
 
-## Clean install (reset vendor)
+### Example commands with Docker
+
 ```sh
-cd src/
-rm -rf vendor .bundle Gemfile.lock
-bundle config set path vendor/bundle
-bundle lock --add-platform ruby
-bundle install --jobs=4
-bundle exec ruby awsrf.rb help
+# Show help
+docker-compose run --rm awsrf help
+
+# Find target groups for an IP
+docker-compose run --rm awsrf target_groups -p <aws-profile> -t <ip>
+
+# List route53 zones
+docker-compose run --rm awsrf route53_zones example.com -p prod
 ```
 
-## Uninstall
-```bash
-rm /usr/local/bin/awsrf
-```
 
 # Usage
 ```bash
@@ -40,6 +42,9 @@ rm /usr/local/bin/awsrf
 ./awsrf route53_records example.com --zone_name=example.com -p prod
 ./awsrf route53_records example.com --zone_name=example.com -p prod,qa
 ./awsrf volumes <id> -p dev,qa,prod
+./awsrf acm --domain example.com -p prod
+./awsrf acm --san-contains example -p prod
+./awsrf acm --serial <serial_number> -p prod
 ```
 
 ## Global options

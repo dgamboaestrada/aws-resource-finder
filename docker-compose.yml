@@ -1,0 +1,10 @@
+services:
+  awsrf:
+    build: .
+    volumes:
+      - ./src:/app/src
+      - ~/.aws:/root/.aws:ro
+    env_file:
+      - .env
+    command: ["help"] # Default command to show help if none provided
+
